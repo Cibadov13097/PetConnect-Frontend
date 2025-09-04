@@ -312,13 +312,7 @@ const PetShopsPage = () => {
                   >
                     Visit Store
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => navigate(`/shop-orders/${shop.id}`)}
-                  >
-                    View Orders
-                  </Button>
+                  {/* View Orders button removed */}
                 </div>
               </CardContent>
             </Card>

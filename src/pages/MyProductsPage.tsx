@@ -19,7 +19,8 @@ import {
   ArrowLeft,
   ShoppingCart,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileSpreadsheet
 } from "lucide-react";
 
 interface Product {
@@ -60,7 +61,15 @@ const MyProductsPage = () => {
     productCategoryId: "", // <-- əlavə et
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
+  // Default template download handler
+  const handleDownloadTemplate = () => {
+    window.open("/excel-product-template.xlsx", "_blank");
+  };
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -267,7 +276,7 @@ const MyProductsPage = () => {
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `https://localhost:7213/api/Product/delete?id=${productToDelete.id}`,
+        `https://localhost:7213/api/Product/delete/${productToDelete.id}`,
         {
           method: "DELETE",
           headers: {
@@ -371,6 +380,39 @@ const MyProductsPage = () => {
     }
   };
 
+  // Handle product upload
+  const handleUploadProducts = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!excelFile) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", excelFile);
+
+      const res = await fetch("https://localhost:7213/api/Product/upload-products", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (res.ok) {
+        toast({ title: "Products uploaded successfully!" });
+        setUploadDialogOpen(false);
+        setExcelFile(null);
+        fetchProducts(currentPage);
+      } else {
+        const errText = await res.text();
+        toast({ title: "Upload failed", description: errText, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Fetch animals for the select input
   useEffect(() => {
     fetch("https://localhost:7213/api/Animal/getAll")
@@ -465,10 +507,16 @@ const MyProductsPage = () => {
               </div>
             </div>
           </div>
-          <Button onClick={() => navigate("/add-product")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setUploadDialogOpen(true)} variant="outline">
+              <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
+              Upload Products
+            </Button>
+            <Button onClick={() => navigate("/add-product")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -820,6 +868,51 @@ const MyProductsPage = () => {
                 </Button>
                 <Button type="submit" disabled={isEditing}>
                   {isEditing ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Upload Products Dialog */}
+        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Products (Excel)</DialogTitle>
+              <DialogDescription>
+                <div className="mb-2 flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleDownloadTemplate}
+                    className="flex items-center"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-1 text-green-600" />
+                    Download Excel Template
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    (Download and fill the template before uploading)
+                  </span>
+                </div>
+                Select an Excel file (.xlsx) to bulk upload products.
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                  <b>Note:</b> Əgər mağazanızda məhsul artıq varsa və Excel faylında həmin məhsul varsa, məhsulun sayı Excel faylında göstərilən məbləğ qədər artırılacaq.
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUploadProducts} className="space-y-4">
+              <Input
+                type="file"
+                accept=".xlsx"
+                onChange={e => setExcelFile(e.target.files ? e.target.files[0] : null)}
+                required
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setUploadDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isUploading || !excelFile}>
+                  {isUploading ? "Uploading..." : "Upload"}
                 </Button>
               </DialogFooter>
             </form>

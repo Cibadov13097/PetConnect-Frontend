@@ -55,6 +55,7 @@ export interface Pet {
   breedId: string;
   gender: 'male' | 'female';
   imageUrl?: string;
+isActive: boolean
 }
 
 export interface Service {
@@ -119,7 +120,17 @@ class ApiClient {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Backend error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to parse backend error as JSON
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const parsed = JSON.parse(errorText);
+          if (parsed.message) errorMsg = parsed.message;
+        } catch {
+          // errorText is not JSON, use as is
+          errorMsg = errorText;
+        }
+        // Throw error with backend message
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
@@ -249,6 +260,14 @@ class ApiClient {
         ...data,
         organizationType: "Shelter",
       }),
+    });
+  }
+
+  // Additional Auth endpoints
+  async forgetPassword(email: string): Promise<any> {
+    return this.request('/api/Account/ForgetPassword', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     });
   }
 }

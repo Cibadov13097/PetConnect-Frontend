@@ -9,6 +9,7 @@ import { apiClient, Organization } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ClinicsPage = () => {
   const [clinics, setClinics] = useState<Organization[]>([]);
@@ -33,6 +34,18 @@ const ClinicsPage = () => {
     imgFile: null as File | null,
   });
   const [registerLoading, setRegisterLoading] = useState(false);
+
+  // Appointment üçün state-lər
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [selectedClinic, setSelectedClinic] = useState<any>(null);
+  const [appointmentForm, setAppointmentForm] = useState({
+    serviceid: "",
+    name: "",
+    description: "",
+    appointmentTime: "",
+  });
+  const [appointmentLoading, setAppointmentLoading] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
 
   // Mövcud klinikaları gətir
   useEffect(() => {
@@ -117,12 +130,126 @@ const ClinicsPage = () => {
         const data = await apiClient.getOrganizationsByType('Clinic');
         setClinics(data);
       } else {
-        toast({ title: "Registration failed", variant: "destructive" });
+        let errorText = "Unknown error";
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            errorText = errorData?.message || errorData?.error || JSON.stringify(errorData);
+          } else {
+            errorText = await response.text();
+          }
+        } catch {
+          errorText = "Unknown error";
+        }
+        toast({ 
+          title: "Registration failed",
+          description: errorText,
+          variant: "destructive"
+        });
       }
     } catch {
       toast({ title: "Registration failed", variant: "destructive" });
     } finally {
       setRegisterLoading(false);
+    }
+  };
+
+  // Appointment modalını açan funksiya
+  const openAppointmentModal = async (clinic: any) => {
+    // Əvvəlcə ClinicId-ni backend-dən al
+    let clinicId = null;
+    try {
+      const res = await fetch(`/api/Clinic/byOrganization/${clinic.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        clinicId = data.id; // Clinic entity-nin id-si
+      }
+    } catch {
+      clinicId = null;
+    }
+    setSelectedClinic({ ...clinic, clinicId }); // clinicId əlavə et
+    setShowAppointmentModal(true);
+    setAppointmentForm({
+      serviceid: "",
+      name: "",
+      description: "",
+      appointmentTime: "",
+    });
+    // Servisləri backend-dən gətir
+    try {
+      const res = await fetch(`/api/Service/organization/${clinic.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setServices(data);
+      } else {
+        setServices([]);
+      }
+    } catch {
+      setServices([]);
+    }
+  };
+
+  // Appointment göndərən funksiya
+  const handleAppointmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClinic) return;
+    setAppointmentLoading(true);
+    try {
+      const body = {
+        clinicId: selectedClinic.id,
+        Serviceid: parseInt(appointmentForm.serviceid, 10), // <-- Dəyişiklik
+        name: appointmentForm.name,
+        description: appointmentForm.description,
+        appointmentTime: appointmentForm.appointmentTime,
+        appointmentStatus: "Pending",
+      };
+      const res = await fetch("/api/Clinic/addAppointment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        toast({
+          title: "Appointment booked!",
+          description: "Your appointment request has been sent.",
+          variant: "default",
+        });
+        setShowAppointmentModal(false);
+      } else {
+        let errorText = "Please check your info and try again.";
+        try {
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await res.json();
+            errorText = errorData?.message || errorData?.error || JSON.stringify(errorData);
+          } else {
+            errorText = await res.text();
+          }
+        } catch {
+          errorText = "Unknown error";
+        }
+        toast({
+          title: "Failed to book appointment",
+          description: errorText,
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Failed to book appointment",
+        description: "Please check your info and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAppointmentLoading(false);
     }
   };
 
@@ -154,16 +281,14 @@ const ClinicsPage = () => {
             Professional veterinary care for your beloved pets
           </p>
           {/* Register Clinic düyməsi */}
-          {isAuthenticated &&
-            (user?.role?.toLowerCase() === "clinicowner") &&
-            (!organization || organization.organizationType !== "Clinic") && (
-              <Button
-                className="mt-6"
-                onClick={() => setShowRegisterModal(true)}
-              >
-                Register Clinic
-              </Button>
-            )}
+          {true && (
+            <Button
+              className="mt-6"
+              onClick={() => setShowRegisterModal(true)}
+            >
+              Register Clinic
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -182,69 +307,76 @@ const ClinicsPage = () => {
         {/* Clinics Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClinics.map((clinic) => (
-            <Card key={clinic.id} className="group hover:shadow-warm transition-all duration-300 bg-gradient-card border-0">
-              <CardHeader className="pb-3">
-                <div className="aspect-video bg-muted rounded-lg mb-3 overflow-hidden">
-                  <img 
-                    src={clinic.imageUrl || clinicImage}
-                    alt={clinic.name}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      (e.target as HTMLImageElement).src = clinicImage;
-                    }}
-                  />
-                </div>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{clinic.name}</CardTitle>
-                  <Badge className="bg-primary text-primary-foreground">
-                    <Stethoscope className="h-3 w-3 mr-1" />
-                    Clinic
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <p className="text-muted-foreground text-sm">
-                  {clinic.description}
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start">
-                    <MapPin className="h-4 w-4 text-muted-foreground mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{clinic.location}</span>
+            <Card
+              key={clinic.id}
+              className="group transition-all duration-300 bg-white border-0 shadow-lg rounded-2xl hover:scale-[1.02] hover:shadow-2xl relative overflow-hidden"
+            >
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 pointer-events-none z-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-80" />
+              <div className="relative z-10">
+                <CardHeader className="pb-3">
+                  <div className="aspect-video bg-muted rounded-xl mb-3 overflow-hidden border-2 border-primary/20">
+                    <img
+                      src={clinic.imageUrl || clinicImage}
+                      alt={clinic.name}
+                      className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-95"
+                      onError={e => {
+                        (e.target as HTMLImageElement).src = clinicImage;
+                      }}
+                    />
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 text-muted-foreground mr-2" />
-                    <span className="text-muted-foreground">
-                      {clinic.openTime === "00:00" && clinic.closeTime === "23:59" 
-                        ? "24/7" 
-                        : `${clinic.openTime} - ${clinic.closeTime}`
-                      }
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors truncate">
+                      {clinic.name}
+                    </CardTitle>
+                    <Badge className="bg-primary text-primary-foreground px-3 py-1 rounded-full shadow">
+                      <Stethoscope className="h-4 w-4 mr-1" />
+                      Clinic
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-4">
+                  <p className="text-muted-foreground text-base mb-2 line-clamp-2">{clinic.description}</p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
+                      <MapPin className="w-4 h-4" />
+                      {clinic.location}
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-2 py-1 rounded-full text-xs font-medium">
+                      <Clock className="w-4 h-4" />
+                      {clinic.openTime === "00:00" && clinic.closeTime === "23:59"
+                        ? "24/7"
+                        : `${clinic.openTime} - ${clinic.closeTime}`}
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-medium">
+                      <Phone className="w-4 h-4" />
+                      {clinic.telephone}
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs font-medium">
+                      <Mail className="w-4 h-4" />
+                      {clinic.email}
                     </span>
                   </div>
-                  <div className="flex items-center">
-                    <Phone className="h-4 w-4 text-muted-foreground mr-2" />
-                    <span className="text-muted-foreground">{clinic.telephone}</span>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      className="flex-1 font-semibold bg-gradient-to-r from-primary to-secondary text-white shadow hover:scale-105 transition"
+                      onClick={() => openAppointmentModal(clinic)}
+                    >
+                      Book Appointment
+                    </Button>
+                    <Button variant="outline" className="flex-1">
+                      Call Now
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => navigate(`/clinicdetail/${clinic.id}`)}
+                    >
+                      View Clinic
+                    </Button>
                   </div>
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 text-muted-foreground mr-2" />
-                    <span className="text-muted-foreground">{clinic.email}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button className="flex-1">
-                    Book Appointment
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    Call Now
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => navigate(`/clinicdetail/${clinic.id}`)}
-                  >
-                    View Clinic
-                  </Button>
-                </div>
-              </CardContent>
+                </CardContent>
+              </div>
             </Card>
           ))}
         </div>
@@ -348,6 +480,66 @@ const ClinicsPage = () => {
             </div>
           </div>
         )}
+
+        {/* Appointment Modal */}
+        <Dialog open={showAppointmentModal} onOpenChange={setShowAppointmentModal}>
+          <DialogContent className="rounded-2xl shadow-2xl bg-gradient-to-br from-white via-primary/5 to-secondary/10">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-primary">
+                Book Appointment at {selectedClinic?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAppointmentSubmit} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Appointment Name"
+                value={appointmentForm.name}
+                onChange={e => setAppointmentForm(f => ({ ...f, name: e.target.value }))}
+                required
+                className="w-full border rounded-lg px-4 py-2 text-base"
+              />
+              <select
+                value={appointmentForm.serviceid}
+                onChange={e => setAppointmentForm(f => ({ ...f, serviceid: e.target.value }))}
+                required
+                className="w-full border rounded-lg px-4 py-2 text-base"
+              >
+                <option value="">Select Service</option>
+                {services.map((service: any) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                placeholder="Description"
+                value={appointmentForm.description}
+                onChange={e => setAppointmentForm(f => ({ ...f, description: e.target.value }))}
+                className="w-full border rounded-lg px-4 py-2 text-base"
+              />
+              <input
+                type="datetime-local"
+                value={appointmentForm.appointmentTime}
+                onChange={e => setAppointmentForm(f => ({ ...f, appointmentTime: e.target.value }))}
+                required
+                className="w-full border rounded-lg px-4 py-2 text-base"
+              />
+              <div className="flex gap-2 mt-4">
+                <Button type="submit" className="flex-1 font-semibold bg-gradient-to-r from-primary to-secondary text-white shadow hover:scale-105 transition" disabled={appointmentLoading}>
+                  {appointmentLoading ? "Booking..." : "Book"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowAppointmentModal(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

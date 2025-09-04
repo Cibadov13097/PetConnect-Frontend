@@ -149,32 +149,64 @@ const Cart = () => {
           ) : (
             <div className="space-y-4">
               {cartItems.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between border-b py-2">
-                  <div>
-                    <div className="font-semibold">{item.name}</div>
-                    <div className="text-sm text-muted-foreground">{item.description}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                      <span>Count:</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={item.count}
-                        onChange={e =>
-                          handleCountChange(idx, Math.max(1, Number(e.target.value)))
-                        }
-                        className="w-16 px-2 py-1 border rounded"
+                <div
+                  key={idx}
+                  className="flex items-center justify-between border-b py-4 gap-4 bg-gradient-to-r from-white via-primary/5 to-secondary/10 rounded-xl shadow-sm hover:shadow-lg transition-all"
+                >
+                  {/* Məhsul şəkli */}
+                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-primary/20 bg-muted flex items-center justify-center mr-2">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
                       />
+                    ) : (
+                      <span className="text-4xl text-muted-foreground">🛒</span>
+                    )}
+                  </div>
+                  {/* Məhsul məlumatları */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-lg truncate">{item.name}</div>
+                    <div className="text-sm text-muted-foreground line-clamp-2">{item.description}</div>
+                    {/* Yeni count dizaynı */}
+                    <div className="flex items-center gap-2 mt-3">
+                      <span className="text-xs text-muted-foreground">Count:</span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="rounded-full px-2 py-1"
+                        onClick={() => handleCountChange(idx, Math.max(1, item.count - 1))}
+                        disabled={item.count <= 1}
+                        aria-label="Decrease"
+                      >
+                        <span className="font-bold text-lg">−</span>
+                      </Button>
+                      <span className="px-3 py-1 bg-primary/10 rounded font-bold text-primary text-base min-w-[32px] text-center select-none">
+                        {item.count}
+                      </span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="rounded-full px-2 py-1"
+                        onClick={() => handleCountChange(idx, item.count + 1)}
+                        aria-label="Increase"
+                      >
+                        <span className="font-bold text-lg">+</span>
+                      </Button>
                     </div>
                   </div>
+                  {/* Qiymət və sil düyməsi */}
                   <div className="flex flex-col items-end gap-2">
-                    <div className="font-bold">{item.price} ₼</div>
+                    <div className="font-bold text-primary text-lg">{item.price} ₼</div>
                     <Button
                       variant="destructive"
                       size="icon"
                       onClick={() => handleRemove(idx)}
                       title="Remove from cart"
+                      className="rounded-full shadow hover:bg-red-600 transition"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>

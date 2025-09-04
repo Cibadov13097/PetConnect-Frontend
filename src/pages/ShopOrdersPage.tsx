@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, XCircle, Truck, Package, RefreshCw, ArrowRight, Undo2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const statusColors: Record<string, string> = {
   Pending: "bg-gray-200 text-gray-700",
@@ -29,10 +30,12 @@ const ShopOrdersPage = () => {
   const { token, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetch("/api/Order/me", {
+    fetch("/api/Order/meShop", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -58,37 +61,83 @@ const ShopOrdersPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const updated = await res.json();
+        let newStatus = action === "return" ? "Returned" : "Cancelled";
+        if (action !== "cancel" && action !== "return" && res.ok) {
+          const data = await res.json();
+          newStatus = data.orderStatus || data.OrderStatus || newStatus;
+        }
         setOrders(orders =>
           orders.map(o =>
             o.id === orderId
-              ? { ...o, orderStatus: updated.orderStatus || action.charAt(0).toUpperCase() + action.slice(1) }
+              ? { ...o, orderStatus: newStatus }
               : o
           )
         );
+        if (action === "cancel") {
+          toast({
+            title: "Order cancelled",
+            description: "Order statusu 'Cancelled' oldu.",
+            variant: "default",
+          });
+        }
+        if (action === "return") {
+          toast({
+            title: "Order returned",
+            description: "Order statusu 'Returned' oldu.",
+            variant: "default",
+          });
+        }
       } else {
-        alert("Status change failed");
+        toast({
+          title: "Status change failed",
+          description: "Status dəyişmədi.",
+          variant: "destructive",
+        });
       }
     } catch {
-      alert("Status change failed");
+      toast({
+        title: "Status change failed",
+        description: "Status dəyişmədi.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDeleteOrder = async (orderId: number) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
+  const handleDeleteOrder = (orderId: number) => {
+    setDeleteOrderId(orderId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteOrder = async () => {
+    if (!deleteOrderId) return;
     try {
-      const res = await fetch(`/api/Order/delete/${orderId}`, {
+      const res = await fetch(`/api/Order/delete/${deleteOrderId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        setOrders(orders => orders.filter(o => o.id !== orderId));
+        setOrders(orders => orders.filter(o => o.id !== deleteOrderId));
+        toast({
+          title: "Order removed from management",
+          description: "Order silinmədi, sadəcə idarəetmə siyahısından çıxarıldı. Order History-də görə bilərsiniz.",
+          variant: "default",
+        });
       } else {
-        alert("Delete failed");
+        toast({
+          title: "Delete failed",
+          description: "Order silinmədi.",
+          variant: "destructive",
+        });
       }
     } catch {
-      alert("Delete failed");
+      toast({
+        title: "Delete failed",
+        description: "Order silinmədi.",
+        variant: "destructive",
+      });
     }
+    setDeleteDialogOpen(false);
+    setDeleteOrderId(null);
   };
 
   const isActionEnabled = (orderStatus: string, action: string) => {
@@ -107,7 +156,7 @@ const ShopOrdersPage = () => {
       case "process":
         return orderStatus === "Confirmed";
       case "ship":
-        return orderStatus === "Processing"; // <-- BURANI DƏYİŞDİM!
+        return orderStatus === "Processing";
       case "deliver":
         return orderStatus === "Shipped" || orderStatus === "Cancelled";
       case "cancel":
@@ -146,11 +195,11 @@ const ShopOrdersPage = () => {
           <CardTitle>Your Shop Orders</CardTitle>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? (
+          {orders.filter(order => order.isDelete === false).length === 0 ? (
             <div className="text-muted-foreground">No orders found for your shop.</div>
           ) : (
             <div className="grid md:grid-cols-2 gap-6">
-              {orders.map(order => (
+              {orders.filter(order => order.isDelete === false).map(order => (
                 <div
                   key={order.id}
                   className="rounded-xl shadow-md border bg-white hover:shadow-lg transition-all p-6 flex flex-col gap-2"
@@ -167,7 +216,7 @@ const ShopOrdersPage = () => {
                     </span>
                   </div>
                   <div className="text-sm text-gray-500 mb-1">
-                    <span className="font-medium">User ID:</span> {order.userId}
+                    <span className="font-medium">User:</span> {order.userName}
                   </div>
                   <div className="mb-2">
                     <span className="font-medium">Items:</span>
@@ -179,6 +228,12 @@ const ShopOrdersPage = () => {
                         </li>
                       ))}
                     </ul>
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-medium">Total:</span>
+                    <span className="ml-2 text-green-600 font-bold">
+                      {order.total?.toFixed(2)} ₼
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {statusActions.map(action => (
@@ -209,6 +264,22 @@ const ShopOrdersPage = () => {
           )}
         </CardContent>
       </Card>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[#fbbf24]">Order Management Info</DialogTitle>
+          </DialogHeader>
+          <div className="mb-4 text-gray-700">
+            Order tam silinməyəcək, sadəcə idarəetmə siyahısından silinəcək.<br />
+            Sifarişi daha sonra <span className="font-semibold text-[#fbbf24]">Order History</span> bölməsində görə biləcəksiniz.<br />
+            Davam etmək istəyirsiniz?
+          </div>
+          <DialogFooter>
+            <Button variant="destructive" onClick={confirmDeleteOrder}>Bəli, sil</Button>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>İmtina</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

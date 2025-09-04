@@ -16,6 +16,7 @@ const ProductsPage = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
   const [categoryMap, setCategoryMap] = useState<{ [key: number]: string }>({});
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const pageSize = 12;
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -51,18 +52,20 @@ const ProductsPage = () => {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async (pageNumber = 1, pageSize = 12) => {
+    const fetchProducts = async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `https://localhost:7213/api/Product/getAll?pageNumber=${pageNumber}&pageSize=${pageSize}`
-        );
+        let url = `https://localhost:7213/api/Product/getAll?pageNumber=${currentPage}&pageSize=${pageSize}`;
+        if (searchTerm) {
+          url += `&search=${encodeURIComponent(searchTerm)}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
         setProducts(data.items || []);
         setTotalPages(data.totalPages || 1);
         setTotalItems(data.totalItems || (data.items || []).length);
-        setCurrentPage(data.pageNumber || pageNumber);
+        setCurrentPage(data.pageNumber || currentPage);
       } catch (error) {
         toast({
           title: "Error",
@@ -74,8 +77,8 @@ const ProductsPage = () => {
       }
     };
 
-    fetchProducts(currentPage, pageSize);
-  }, [currentPage, pageSize, toast]);
+    fetchProducts();
+  }, [currentPage, pageSize, searchTerm, toast]);
 
   const filteredProducts = (products || []).filter(
     (product) =>
@@ -110,9 +113,7 @@ const ProductsPage = () => {
 
   // Səbətə məhsul əlavə edən funksiya
   const addToBasket = (product: any) => {
-    // SessionStorage-dan səbəti oxu
     const basket = JSON.parse(sessionStorage.getItem("cart") || "[]");
-    // Əgər məhsul artıq səbətdədirsə, sayını artır
     const existing = basket.find((item: any) => item.id === product.id);
     if (existing) {
       existing.count = (existing.count || 1) + 1;
@@ -121,6 +122,7 @@ const ProductsPage = () => {
     }
     sessionStorage.setItem("cart", JSON.stringify(basket));
     toast({ title: "Added to basket!" });
+    window.location.reload(); // Refresh page to update basket count
   };
 
   if (loading) {
@@ -157,6 +159,58 @@ const ProductsPage = () => {
               className="pl-10"
             />
           </div>
+        </div>
+
+        {/* Category Filter */}
+        <div className="mb-8 flex flex-wrap gap-3 justify-center">
+          <Button
+            variant={!selectedCategory ? "default" : "outline"}
+            className="rounded-full px-5 py-2 font-semibold shadow"
+            onClick={async () => {
+              setSelectedCategory(null);
+              setLoading(true);
+              // Default məhsulları fetch et
+              const res = await fetch(
+                `https://localhost:7213/api/Product/getAll?pageNumber=1&pageSize=${pageSize}`
+              );
+              const data = await res.json();
+              setProducts(data.items || []);
+              setTotalPages(data.totalPages || 1);
+              setTotalItems(data.totalItems || (data.items || []).length);
+              setCurrentPage(data.pageNumber || 1);
+              setLoading(false);
+            }}
+          >
+            All
+          </Button>
+          {categories.map((cat) => (
+            <Button
+              key={cat.id}
+              variant={selectedCategory === cat.id ? "default" : "outline"}
+              className={`rounded-full px-5 py-2 font-semibold shadow flex items-center gap-2 transition-all duration-150 ${
+                selectedCategory === cat.id
+                  ? "bg-primary text-white"
+                  : "bg-white text-primary border-primary"
+              }`}
+              onClick={async () => {
+                setSelectedCategory(cat.id);
+                setLoading(true);
+                const res = await fetch(
+                  `https://localhost:7213/api/Product/filterByCategory/${cat.id}`
+                );
+                const data = await res.json();
+                setProducts(Array.isArray(data) ? data : []);
+                setTotalPages(1);
+                setTotalItems(Array.isArray(data) ? data.length : 0);
+                setCurrentPage(1);
+                setLoading(false);
+              }}
+            >
+              {/* İstəyə görə ikon əlavə edə bilərsən */}
+              <Star className="h-4 w-4 text-yellow-400" />
+              {cat.name}
+            </Button>
+          ))}
         </div>
 
         {/* Pagination Info */}
@@ -244,7 +298,8 @@ const ProductsPage = () => {
             </Button>
             <div className="flex space-x-1">
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const pageNum = Math.max(1, currentPage - 2) + i;
+                let start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+                const pageNum = start + i;
                 if (pageNum > totalPages) return null;
                 return (
                   <Button
@@ -259,13 +314,13 @@ const ProductsPage = () => {
               })}
             </div>
             <Button
-              variant="outline"
+              variant="outline" 
               size="sm"
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
             >
-              <ChevronRight className="h-4 w-4 ml-1" />
               Next
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         )}
@@ -279,7 +334,22 @@ const ProductsPage = () => {
             <p className="text-muted-foreground mb-8">
               Try adjusting your search or filter settings.
             </p>
-            <Button onClick={() => setSearchTerm("")}>
+            <Button
+              onClick={async () => {
+                setSearchTerm("");
+                setSelectedCategory(null);
+                setLoading(true);
+                const res = await fetch(
+                  `https://localhost:7213/api/Product/getAll?pageNumber=1&pageSize=${pageSize}`
+                );
+                const data = await res.json();
+                setProducts(data.items || []);
+                setTotalPages(data.totalPages || 1);
+                setTotalItems(data.totalItems || (data.items || []).length);
+                setCurrentPage(data.pageNumber || 1);
+                setLoading(false);
+              }}
+            >
               Reset Filters
             </Button>
           </div>

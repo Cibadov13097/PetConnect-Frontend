@@ -24,7 +24,15 @@ import Profile from "@/pages/Profile";
 import MyPets from "@/pages/MyPets";
 import Cart from "@/pages/Cart";
 import ShopOrdersPage from "@/pages/ShopOrdersPage";
-
+import AppointmentsPage from "@/pages/AppointmentsPage";
+import { adminRoutes } from "./routes/adminRoutes";
+import SupportChatbot from "@/components/SupportChatbot";
+import ForgetPasswordPage from "./pages/ForgetPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage"; 
+import ResetEmailPage from "./pages/ResetEmailPage"; 
+import MyOrdersPage from "@/pages/MyOrdersPage";
+import PairPetPage from "./pages/PairPetPage";
+import MemberSubscriptionPlan from "./pages/MemberSubscriptionPlan";
 const queryClient = new QueryClient();
 
 export function ApiClientTokenSync() {
@@ -37,40 +45,63 @@ export function ApiClientTokenSync() {
   return null;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <ApiClientTokenSync />
-      <BrowserRouter>
-        <Navigation /> {/* YALNIZ BURADA OLACAQ */}
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/shelters" element={<SheltersPage />} />
-          <Route path="/clinics" element={<ClinicsPage />} />
-          <Route path="/petshops" element={<PetShopsPage />} />
-          <Route path="/shop-detail" element={<ShopDetail />} />
-          <Route path="/clinic-detail" element={<ClinicDetail />} />
-          <Route path="/shelter-detail" element={<ShelterDetail />} />
-          <Route path="/shelter-detail/:id" element={<ShelterDetail />} />
-          <Route path="/add-product" element={<AddProductPage />} />
-          <Route path="/my-products" element={<MyProductsPage />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/mypets" element={<MyPets />} />
-          <Route path="/shopdetail/:id" element={<ShopDetail />} />
-          <Route path="/clinicdetail/:id" element={<ClinicDetail />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/shop-orders/:shopId" element={<ShopOrdersPage />} />
-          <Route path="/shop-orders" element={<ShopOrdersPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <ApiClientTokenSync />
+        <BrowserRouter>
+          <Routes>
+            {/* Website pages with navigation */}
+            <Route
+              path="*"
+              element={
+                <>
+                  <Navigation />
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/products" element={<ProductsPage />} />
+                    <Route path="/shelters" element={<SheltersPage />} />
+                    <Route path="/clinics" element={<ClinicsPage />} />
+                    <Route path="/petshops" element={<PetShopsPage />} />
+                    <Route path="/shop-detail" element={<ShopDetail />} />
+                    <Route path="/clinic-detail" element={<ClinicDetail />} />
+                    <Route path="/shelter-detail" element={<ShelterDetail />} />
+                    <Route path="/shelter-detail/:id" element={<ShelterDetail />} />
+                    <Route path="/add-product" element={<AddProductPage />} />
+                    <Route path="/my-products" element={<MyProductsPage />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/mypets" element={<MyPets />} />
+                    <Route path="/shopdetail/:id" element={<ShopDetail />} />
+                    <Route path="/clinicdetail/:id" element={<ClinicDetail />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/shop-orders/:shopId" element={<ShopOrdersPage />} />
+                    <Route path="/shop-orders" element={<ShopOrdersPage />} />
+                    <Route path="/appointments" element={<AppointmentsPage />} />
+                    <Route path="/forget-password" element={<ForgetPasswordPage />} />
+                    <Route path="/reset-email" element={<ResetEmailPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} /> {/* səhv! */}
+                    <Route path="/myorders" element={<MyOrdersPage />} />
+                    <Route path="/pair-pet" element={<PairPetPage />} />
+                    <Route path="/member-subscription" element={<MemberSubscriptionPlan />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </>
+              }
+            />
+
+            {/* Admin routes */}
+            {adminRoutes}
+          </Routes>
+        </BrowserRouter>
+        <SupportChatbot />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

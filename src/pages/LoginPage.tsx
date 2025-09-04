@@ -17,41 +17,41 @@ const LoginPage = () => {
   const { toast } = useToast();
   const { setAuth } = useAuth();
 
-const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    const response = await apiClient.login({ email, password });
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const response = await apiClient.login({ email, password });
 
-    console.log('Login response:', response);
+      console.log('Login response:', response);
 
-    // Try different possible token property names:
-    const token = response.token ?? response.accessToken ?? null;
+      // Try different possible token property names:
+      const token = response.token ?? response.accessToken ?? null;
 
-    if (response.success && token) {
-      // Set token in ApiClient instance
-      apiClient.setToken(token);
+      if (response.success && token) {
+        // Set token in ApiClient instance
+        apiClient.setToken(token);
 
-      // Persist token in localStorage for page reloads
-      localStorage.setItem("authToken", token);
+        // Persist token in localStorage for page reloads
+        localStorage.setItem("authToken", token);
 
-      // Update auth context/state (adjust depending on your user data shape)
-      setAuth(response.user, token);
+        // Update auth context/state (adjust depending on your user data shape)
+        setAuth(response.user, token);
 
-      toast({ title: "Success", description: "Logged in successfully!" });
+        toast({ title: "Success", description: "Logged in successfully!" });
 
-      navigate("/");
-    } else {
-      console.warn('Login did not return a valid token or success flag.');
-      toast({ title: "Error", description: "Login failed. Invalid credentials or no token received." });
+        navigate("/");
+      } else {
+        console.warn('Login did not return a valid token or success flag.');
+        toast({ title: "Error", description: "Login failed. Invalid credentials or no token received." });
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({ title: "Error", description: error.message || "Login failed.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-  } catch (error: any) {
-    console.error('Login error:', error);
-    toast({ title: "Error", description: error.message || "Login failed.", variant: "destructive" });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
@@ -104,6 +104,15 @@ const handleLogin = async (e: React.FormEvent) => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing In..." : "Sign In"}
               </Button>
+              <div className="flex justify-end mt-2">
+                <button
+                  type="button"
+                  className="text-primary text-sm underline hover:opacity-80"
+                  onClick={() => navigate("/forget-password")}
+                >
+                  Forgot password?
+                </button>
+              </div>
             </form>
           </CardContent>
         </Card>

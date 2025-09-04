@@ -1,4 +1,3 @@
-import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -9,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, MapPin, Calendar, Building2, Edit, Home, DollarSign, Plus } from "lucide-react";
+
+const API_BASE = "https://localhost:7213";
 
 const Profile = () => {
   const { token, isAuthenticated } = useAuth();
@@ -26,6 +27,10 @@ const Profile = () => {
   const [isAddingBalance, setIsAddingBalance] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailToken, setEmailToken] = useState("");
+  const [isEmailChanging, setIsEmailChanging] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -40,19 +45,15 @@ const Profile = () => {
   }, [token, isAuthenticated]);
 
   useEffect(() => {
-    const fetchMyOrg = async () => {
-      try {
-        const res = await fetch("/api/Organization/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setOrganization(data);
-        }
-      } catch {}
-    };
-    if (isAuthenticated) fetchMyOrg();
-  }, [token, isAuthenticated]);
+    const token = sessionStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/Organization/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => setOrganization(data))
+      .catch(() => setOrganization(null));
+  }, []);
 
   const orgTypeName =
     organization?.organizationType === "Shop"
@@ -73,6 +74,118 @@ const Profile = () => {
       });
     }
   }, [user]);
+
+  const fetchEmailChangeToken = async (oldEmail: string, newEmail: string) => {
+    const res = await fetch(`${API_BASE}/api/Account/GenerateChangeEmailToken`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ Email: oldEmail, NewEmail: newEmail }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.token;
+    }
+    return null;
+  };
+
+  const handleRequestToken = async () => {
+    if (!newEmail) {
+      toast({ title: "Enter new email", variant: "destructive" });
+      return;
+    }
+    setIsEmailChanging(true);
+    const token = await fetchEmailChangeToken(user.email, newEmail);
+    if (token) {
+      toast({ title: "Token generated! Check your email or admin panel." });
+      setEmailToken(token);
+    } else {
+      toast({ title: "Failed to generate token", variant: "destructive" });
+    }
+    setIsEmailChanging(false);
+  };
+
+  const handleRequestChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail) {
+      toast({ title: "Enter new email", variant: "destructive" });
+      return;
+    }
+    setIsEmailChanging(true);
+
+    // Yeni emailə təsdiq linki göndər
+    const res = await fetch(`${API_BASE}/api/Account/RequestChangeEmail`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        Email: user.email,
+        NewEmail: newEmail
+      }),
+    });
+    if (res.ok) {
+      toast({ title: "Confirmation link sent to new email!" });
+      setShowEmailModal(false);
+      setNewEmail("");
+    } else {
+      const err = await res.json();
+      toast({
+        title: "Failed to request email change",
+        description: err.errors?.[0]?.description || "Unknown error",
+        variant: "destructive"
+      });
+    }
+    setIsEmailChanging(false);
+  };
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail) {
+      toast({ title: "Enter new email", variant: "destructive" });
+      return;
+    }
+    setIsEmailChanging(true);
+
+    // 1. Tokeni backenddən al
+    const tokenRes = await fetch(`${API_BASE}/api/Account/GenerateChangeEmailToken`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ Email: user.email, NewEmail: newEmail }),
+    });
+    let token = "";
+    if (tokenRes.ok) {
+      const data = await tokenRes.json();
+      token = data.token;
+    } else {
+      toast({ title: "Failed to generate token", variant: "destructive" });
+      setIsEmailChanging(false);
+      return;
+    }
+
+    // 2. Emaili dəyiş
+    const res = await fetch(`${API_BASE}/api/Account/ChangeEmail`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        Email: user.email,
+        NewEmail: newEmail,
+        Token: token
+      }),
+    });
+    if (res.ok) {
+      toast({ title: "Email changed successfully!" });
+      setShowEmailModal(false);
+      setNewEmail("");
+      setUser((prev: any) => ({ ...prev, email: newEmail }));
+    } else {
+      const err = await res.json();
+      toast({
+        title: "Failed to change email",
+        description: err.errors?.[0]?.description || "Unknown error",
+        variant: "destructive"
+      });
+    }
+    setIsEmailChanging(false);
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0e7ef]">
@@ -127,6 +240,14 @@ const Profile = () => {
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <span>{user?.email}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-2"
+                    onClick={() => setShowEmailModal(true)}
+                  >
+                    Change Email
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
@@ -146,7 +267,7 @@ const Profile = () => {
                     <span>{user.address}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>
                     Joined:{" "}
@@ -154,7 +275,7 @@ const Profile = () => {
                       ? new Date(user.createdDate).toLocaleDateString()
                       : "-"}
                   </span>
-                </div>
+                </div> */}
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="px-2 py-1 flex items-center gap-1">
                     <DollarSign className="h-4 w-4" />
@@ -261,18 +382,22 @@ const Profile = () => {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
+                // if (editForm.email !== user.email) {
+                //   await handleChangeEmail(e);
+                // }
+                // Digər məlumatları PUT ilə göndər
                 try {
-                  const res = await fetch("/api/User/me", {
+                  const res = await fetch("/api/User/editMe", {
                     method: "PUT",
                     headers: {
                       "Content-Type": "application/json",
                       Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                      userName: editForm.userName,
-                      fullname: editForm.fullname,
-                      email: editForm.email,
-                      telephoneNumber: editForm.telephoneNumber
+                      UserName: editForm.userName,
+                      Fullname: editForm.fullname,
+                      Email: editForm.email,
+                      TelephoneNumber: editForm.telephoneNumber
                     }),
                   });
                   if (res.ok) {
@@ -301,14 +426,6 @@ const Profile = () => {
                   <Input
                     value={editForm.fullname}
                     onChange={e => setEditForm(f => ({ ...f, fullname: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1 font-medium">Email</label>
-                  <Input
-                    type="email"
-                    value={editForm.email}
-                    onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -380,6 +497,36 @@ const Profile = () => {
                 </Button>
                 <Button type="submit" disabled={isAddingBalance}>
                   {isAddingBalance ? "Adding..." : "Add"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Email Change Modal */}
+        <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Email</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleRequestChangeEmail}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-1 font-medium">New Email</label>
+                  <Input
+                    type="email"
+                    value={newEmail}
+                    onChange={e => setNewEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="outline" onClick={() => setShowEmailModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isEmailChanging || !newEmail}>
+                  {isEmailChanging ? "Sending..." : "Request Change"}
                 </Button>
               </DialogFooter>
             </form>

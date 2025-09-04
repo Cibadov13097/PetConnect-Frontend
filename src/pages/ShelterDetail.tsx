@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, MapPin, Phone, Mail, Globe, Edit, Plus, Heart, Users, Clock, Wrench } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, Edit, Plus, Heart, Users, Clock, Wrench, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface Shelter {
   id: string;
@@ -39,6 +40,23 @@ const ShelterDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [serviceForm, setServiceForm] = useState({ name: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEditServiceModal, setShowEditServiceModal] = useState(false);
+  const [editServiceId, setEditServiceId] = useState<number | null>(null);
+  const [showEditShelterModal, setShowEditShelterModal] = useState(false);
+  const [editShelterForm, setEditShelterForm] = useState({
+    name: shelter?.name || "",
+    description: shelter?.description || "",
+    location: shelter?.location || "",
+    telephone: shelter?.telephone || "",
+    email: shelter?.email || "",
+    website: shelter?.website || "",
+    openTime: shelter?.openTime || "",
+    closeTime: shelter?.closeTime || "",
+    image: null as File | null,
+  });
 
   useEffect(() => {
     console.log("Shelter id from params:", id);
@@ -109,6 +127,23 @@ const ShelterDetail = () => {
     fetchServices();
   }, [id]);
 
+  // Modalın dolu gəlməsi üçün useEffect əlavə et:
+  useEffect(() => {
+    if (showEditShelterModal && shelter) {
+      setEditShelterForm({
+        name: shelter.name || "",
+        description: shelter.description || "",
+        location: shelter.location || "",
+        telephone: shelter.telephone || "",
+        email: shelter.email || "",
+        website: shelter.website || "",
+        openTime: shelter.openTime || "",
+        closeTime: shelter.closeTime || "",
+        image: null,
+      });
+    }
+  }, [showEditShelterModal, shelter]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -165,7 +200,7 @@ const ShelterDetail = () => {
             </div>
           </div>
           {isOwner && (
-            <Button onClick={() => navigate(`/edit-shelter/${shelter.id}`)}>
+            <Button onClick={() => setShowEditShelterModal(true)}>
               <Edit className="h-4 w-4 mr-2" />
               Edit Shelter
             </Button>
@@ -304,9 +339,10 @@ const ShelterDetail = () => {
                   <Heart className="h-4 w-4 mr-2" />
                   Manage Animals
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/add-animal")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Animal
+                {/* Add Service button opens modal */}
+                <Button variant="outline" onClick={() => setShowServiceModal(true)}>
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Add Service
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/adoption-requests")}>
                   Adoption Requests
@@ -318,6 +354,64 @@ const ShelterDetail = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Service Modal */}
+        {showServiceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Add Service</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsSubmitting(true);
+                  try {
+                    const res = await fetch("/api/Service", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        name: serviceForm.name
+                      }),
+                    });
+                    if (res.ok) {
+                      toast({ title: "Service added", description: "Service created successfully!" });
+                      setShowServiceModal(false);
+                      setServiceForm({ name: "" });
+                      // Refresh services
+                      const data = await res.json();
+                      setServices((prev) => [...prev, data]);
+                    } else {
+                      toast({ title: "Error", description: "Failed to add service", variant: "destructive" });
+                    }
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+              >
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2"
+                    value={serviceForm.name}
+                    onChange={e => setServiceForm(f => ({ ...f, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowServiceModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Adding..." : "Add Service"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
         {/* Services Panel */}
@@ -340,13 +434,43 @@ const ShelterDetail = () => {
                   <div key={service.id} className="p-4 rounded-lg border bg-muted/50 flex flex-col md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="font-semibold text-base">{service.name}</p>
-                      <p className="text-sm text-muted-foreground">{service.description}</p>
                     </div>
-                    <div className="mt-2 md:mt-0">
-                      <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                        {service.price ? `${service.price} ₼` : "Free"}
-                      </span>
-                    </div>
+                    {/* Edit və Delete yalnız öz shelteri üçün görünür */}
+                    {isOwner && (
+                      <div className="flex gap-2 mt-2 md:mt-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setServiceForm({ name: service.name });
+                            setEditServiceId(service.id);
+                            setShowEditServiceModal(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={async () => {
+                            if (window.confirm("Are you sure you want to delete this service?")) {
+                              const res = await fetch(`/api/Service/${service.id}`, {
+                                method: "DELETE",
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              if (res.ok) {
+                                toast({ title: "Service deleted", description: "Service removed successfully!" });
+                                setServices(prev => prev.filter(s => s.id !== service.id));
+                              } else {
+                                toast({ title: "Error", description: "Failed to delete service", variant: "destructive" });
+                              }
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -386,6 +510,182 @@ const ShelterDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Edit Service Modal */}
+        {showEditServiceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Edit Service</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsSubmitting(true);
+                  try {
+                    const res = await fetch(`/api/Service/${editServiceId}`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        name: serviceForm.name
+                      }),
+                    });
+                    if (res.ok) {
+                      toast({ title: "Service updated", description: "Service updated successfully!" });
+                      setShowEditServiceModal(false);
+                      setServiceForm({ name: "" });
+                      // Refresh services
+                      const updated = await res.json();
+                      setServices(prev =>
+                        prev.map(s => s.id === editServiceId ? updated : s)
+                      );
+                    } else {
+                      toast({ title: "Error", description: "Failed to update service", variant: "destructive" });
+                    }
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+              >
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2"
+                    value={serviceForm.name}
+                    onChange={e => setServiceForm(f => ({ ...f, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowEditServiceModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Shelter Modal */}
+        {showEditShelterModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <form
+              className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIsSubmitting(true);
+                try {
+                  const formData = new FormData();
+                  formData.append("Name", editShelterForm.name);
+                  formData.append("Description", editShelterForm.description);
+                  formData.append("Location", editShelterForm.location);
+                  formData.append("Telephone", editShelterForm.telephone);
+                  formData.append("Email", editShelterForm.email);
+                  formData.append("Website", editShelterForm.website);
+                  formData.append("OpenTime", editShelterForm.openTime);
+                  formData.append("CloseTime", editShelterForm.closeTime);
+                  if (editShelterForm.image) formData.append("ImgFile", editShelterForm.image);
+
+                  const res = await fetch(`/api/Organization/edit?id=${shelter.id}`, {
+                    method: "PUT",
+                    headers: { Authorization: `Bearer ${token}` }, // Content-Type göndərmə!
+                    body: formData,
+                  });
+                  if (res.ok) {
+                    toast({ title: "Shelter updated!" });
+                    setShowEditShelterModal(false);
+                    window.location.reload();
+                  } else {
+                    const error = await res.text();
+                    toast({ title: "Update failed", description: error, variant: "destructive" });
+                  }
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+            >
+              <h2 className="text-2xl font-bold mb-4">Edit Shelter</h2>
+              <Input
+                placeholder="Name"
+                value={editShelterForm.name}
+                onChange={e => setEditShelterForm(f => ({ ...f, name: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Description"
+                value={editShelterForm.description}
+                onChange={e => setEditShelterForm(f => ({ ...f, description: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Location"
+                value={editShelterForm.location}
+                onChange={e => setEditShelterForm(f => ({ ...f, location: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Telephone"
+                value={editShelterForm.telephone}
+                onChange={e => setEditShelterForm(f => ({ ...f, telephone: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Email"
+                type="email"
+                value={editShelterForm.email}
+                onChange={e => setEditShelterForm(f => ({ ...f, email: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Website"
+                value={editShelterForm.website}
+                onChange={e => setEditShelterForm(f => ({ ...f, website: e.target.value }))}
+              />
+              <div className="flex gap-2">
+                <Input
+                  type="time"
+                  placeholder="Open Time"
+                  value={editShelterForm.openTime}
+                  onChange={e => setEditShelterForm(f => ({ ...f, openTime: e.target.value }))}
+                />
+                <Input
+                  type="time"
+                  placeholder="Close Time"
+                  value={editShelterForm.closeTime}
+                  onChange={e => setEditShelterForm(f => ({ ...f, closeTime: e.target.value }))}
+                />
+              </div>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={e =>
+                  setEditShelterForm(f => ({
+                    ...f,
+                    image: e.target.files && e.target.files[0] ? e.target.files[0] : null,
+                  }))
+                }
+              />
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowEditShelterModal(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

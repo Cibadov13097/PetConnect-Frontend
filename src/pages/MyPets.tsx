@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
@@ -18,7 +17,8 @@ const MyPets = () => {
     birthDate: "",
     image: null as File | null,
     breedId: "",
-    gender: "Male", // default value
+    gender: "Male", 
+    isActive: true
   });
   const [submitting, setSubmitting] = useState(false);
   const [animals, setAnimals] = useState<any[]>([]);
@@ -33,7 +33,9 @@ const MyPets = () => {
     image: null as File | null,
     breedId: "",
     gender: "Male",
+   isActive: true
   });
+  const [activePlan, setActivePlan] = useState<any>(null);
 
   useEffect(() => {
     const fetchPets = async () => {
@@ -72,6 +74,16 @@ const MyPets = () => {
     }
   }, [animalId]);
 
+  useEffect(() => {
+    // Plan məlumatını fetch et
+    fetch("/api/MemberSubscription/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setActivePlan(data))
+      .catch(() => setActivePlan(null));
+  }, [token]);
+
   const handleAddPet = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -83,6 +95,7 @@ const MyPets = () => {
       formData.append("BirthDate", addForm.birthDate);
       formData.append("BreedId", addForm.breedId);
       formData.append("Gender", addForm.gender);
+      formData.append("Aktiv", addForm.isActive.toString());
       if (addForm.image) formData.append("ImageFile", addForm.image);
 
       const res = await fetch("/api/Pet/add", {
@@ -100,6 +113,7 @@ const MyPets = () => {
           image: null,
           breedId: "",
           gender: "Male",
+              isActive: true
         });
         setAnimalId("");
         // Refresh pets list
@@ -151,6 +165,7 @@ const MyPets = () => {
       image: null,
       breedId: pet.breedId || "",
       gender: pet.gender || "Male",
+        isActive: pet.isActive
     });
     setEditModal({ open: true, pet });
   };
@@ -167,6 +182,7 @@ const MyPets = () => {
       formData.append("BirthDate", editForm.birthDate);
       formData.append("BreedId", editForm.breedId);
       formData.append("Gender", editForm.gender);
+      formData.append("isActive", editForm.isActive.toString()); // <-- Düzgün ad!
       if (editForm.image) formData.append("ImageFile", editForm.image);
 
       const res = await fetch(`/api/Pet/edit/${editModal.pet.id}`, {
@@ -209,85 +225,216 @@ const MyPets = () => {
     return age === 1 ? "1 year old" : `${age} years old`;
   };
 
+  const handleDeletePet = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this pet?")) return;
+    try {
+      const res = await fetch(`/api/Pet/delete/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPets(prev => prev.filter(p => p.id !== id));
+      } else {
+        alert("Failed to delete pet.");
+      }
+    } catch {
+      alert("Failed to delete pet.");
+    }
+  };
+
   if (!isAuthenticated) {
     return <div className="text-center mt-10 text-lg">Please login to view your pets.</div>;
   }
 
   return (
     <>
-      
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">My Pets</h1>
           <Button onClick={() => setShowAddModal(true)}>Add Pet</Button>
         </div>
+        {/* Plan limit və info mesajı */}
+        {activePlan && typeof activePlan.petLimit === "number" && (
+          <div className="mb-4 p-4 rounded-lg bg-yellow-50 border border-yellow-300 text-yellow-800 font-medium">
+            Planınızda <b>{activePlan.petLimit}</b> pet limiti var. Hal-hazırda <b>{pets.slice(0, activePlan.petLimit).length}</b> petiniz göstərilir.
+            Digər petləriniz silinməyib, narahat olmayın. Əgər bütün petlərinizi görmək istəyirsinizsə, planınızı yüksəltməlisiniz.
+            <br />
+            <span className="text-blue-700 underline cursor-pointer" onClick={() => window.location.href = "/member-subscription"}>
+              Planlarımızla tanış olun
+            </span>
+          </div>
+        )}
         {loading ? (
           <div>Loading...</div>
         ) : pets.length === 0 ? (
           <div className="text-muted-foreground">You have no pets yet.</div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {pets.map((pet: any, index) => (
-              <Card
-                key={pet.id ?? index}
-                className="relative group shadow-xl border-0 bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.025] hover:shadow-2xl"
-              >
-                {/* Decorative gradient overlay */}
-                <div className="absolute inset-0 pointer-events-none z-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-80" />
-                <div className="relative z-10">
-                  <div className="relative">
-                    {(pet.image || pet.imageUrl) ? (
-                      <img
-                        src={pet.image || pet.imageUrl}
-                        alt={pet.name}
-                        className="w-full h-48 object-cover rounded-t-2xl border-b-4 border-primary/20 group-hover:brightness-95 transition-all duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-100 text-slate-400 text-6xl rounded-t-2xl border-b-4 border-primary/20">
-                        🐾
+            {activePlan && typeof activePlan.petLimit === "number"
+              ? pets.slice(0, activePlan.petLimit).map((pet: any, index) => (
+                  <Card
+                    key={pet.id ?? index}
+                    className="relative group shadow-xl border-0 bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.025] hover:shadow-2xl"
+                  >
+                    {/* Decorative gradient overlay */}
+                    <div className="absolute inset-0 pointer-events-none z-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-80" />
+                    <div className="relative z-10">
+                      <div className="relative">
+                        {(pet.image || pet.imageUrl) ? (
+                          <img
+                            src={pet.image || pet.imageUrl}
+                            alt={pet.name}
+                            className="w-full h-48 object-cover rounded-t-2xl border-b-4 border-primary/20 group-hover:brightness-95 transition-all duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-100 text-slate-400 text-6xl rounded-t-2xl border-b-4 border-primary/20">
+                            🐾
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <span className="absolute top-3 right-3 bg-white/80 rounded-full px-3 py-1 text-xs font-semibold text-primary shadow">
-                      {pet.gender}
-                    </span>
+                      <CardHeader className="pb-2 pt-4 px-5">
+                        <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors truncate">
+                          {pet.name}
+                        </CardTitle>
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${pet.isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                            {pet.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="px-5 pb-5">
+                        {/* Əsas məlumatlar */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 12.414a2 2 0 00-2.828 0l-4.243 4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            {pet.location}
+                          </span>
+                          <span className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-2 py-1 rounded-full text-xs font-medium">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            {pet.birthDate ? getAge(pet.birthDate) : ""}
+                          </span>
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-medium">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                            {
+                              breeds.find((b) => b.id === pet.breedId)?.name // <-- breed adı göstərilir
+                                || pet.breedId
+                            }
+                          </span>
+                          <span className="inline-flex items-center gap-1 bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs font-medium">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+                            {pet.gender}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-3 min-h-[36px] italic">
+                          {pet.description || "No description"}
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full font-semibold border-primary hover:bg-primary/10"
+                            onClick={() => openEditModal(pet)}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                        {/* Delete düyməsi */}
+                        <div className="flex justify-center mt-3">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="rounded-full px-6"
+                            onClick={() => handleDeletePet(pet.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </div>
+                  </Card>
+                ))
+            : pets.map((pet: any, index) => (
+                <Card
+                  key={pet.id ?? index}
+                  className="relative group shadow-xl border-0 bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.025] hover:shadow-2xl"
+                >
+                  {/* Decorative gradient overlay */}
+                  <div className="absolute inset-0 pointer-events-none z-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-80" />
+                  <div className="relative z-10">
+                    <div className="relative">
+                      {(pet.image || pet.imageUrl) ? (
+                        <img
+                          src={pet.image || pet.imageUrl}
+                          alt={pet.name}
+                          className="w-full h-48 object-cover rounded-t-2xl border-b-4 border-primary/20 group-hover:brightness-95 transition-all duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-100 text-slate-400 text-6xl rounded-t-2xl border-b-4 border-primary/20">
+                          🐾
+                        </div>
+                      )}
+                    </div>
+                    <CardHeader className="pb-2 pt-4 px-5">
+                      <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors truncate">
+                        {pet.name}
+                      </CardTitle>
+                      <div className="mt-1">
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${pet.isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                          {pet.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="px-5 pb-5">
+                      {/* Əsas məlumatlar */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 12.414a2 2 0 00-2.828 0l-4.243 4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                          {pet.location}
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-2 py-1 rounded-full text-xs font-medium">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          {pet.birthDate ? getAge(pet.birthDate) : ""}
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-medium">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                          {
+                            breeds.find((b) => b.id === pet.breedId)?.name // <-- breed adı göstərilir
+                              || pet.breedId
+                          }
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs font-medium">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+                          {pet.gender}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-3 min-h-[36px] italic">
+                        {pet.description || "No description"}
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full font-semibold border-primary hover:bg-primary/10"
+                          onClick={() => openEditModal(pet)}
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                      {/* Delete düyməsi */}
+                      <div className="flex justify-center mt-3">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="rounded-full px-6"
+                          onClick={() => handleDeletePet(pet.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
                   </div>
-                  <CardHeader className="pb-2 pt-4 px-5">
-                    <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors truncate">
-                      {pet.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-5 pb-5">
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-3 min-h-[36px] italic">
-                      {pet.description || "No description"}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 12.414a2 2 0 00-2.828 0l-4.243 4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        {pet.location}
-                      </span>
-                      <span className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-2 py-1 rounded-full text-xs font-medium">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        {pet.birthDate ? getAge(pet.birthDate) : ""}
-                      </span>
-                      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-medium">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
-                        {breeds.find((b) => b.id === pet.breedId)?.name || pet.breedId}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full font-semibold border-primary hover:bg-primary/10"
-                        onClick={() => openEditModal(pet)}
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </CardContent>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
           </div>
         )}
 
@@ -466,6 +613,33 @@ const MyPets = () => {
                   <option value="Female">Female</option>
                 </select>
               </div>
+
+                {/* isActive status for edit modal */}
+              <div>
+                <label className="block mb-1 font-medium">Status</label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="isActive"
+                      value="true"
+                      checked={editForm.isActive === true}
+                      onChange={() => setEditForm(f => ({ ...f, isActive: true }))}
+                    />
+                    <span>Active</span>
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="isActive"
+                      value="false"
+                      checked={editForm.isActive === false}
+                      onChange={() => setEditForm(f => ({ ...f, isActive: false }))}
+                    />
+                    <span>Inactive</span>
+                  </label>
+                </div>
+              </div>  
               <Input
                 type="file"
                 accept="image/*"
@@ -475,6 +649,7 @@ const MyPets = () => {
                     image: e.target.files ? e.target.files[0] : null,
                   }))
                 }
+                
               />
               <div className="flex gap-2">
                 <Button type="submit" disabled={submitting} className="flex-1">

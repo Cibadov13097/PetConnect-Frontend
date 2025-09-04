@@ -156,14 +156,16 @@ const ShopDetail = () => {
     setShop(updatedShop);
   };
 
-  // Add to basket handler (dummy for now)
-  const handleAddToBasket = (product: any) => {
-    toast({
-      title: "Added to Basket",
-      description: `${product.name} added to your basket!`,
-      variant: "default",
-    });
-    setIsProductModalOpen(false);
+  const addToBasket = (product: any) => {
+    const basket = JSON.parse(sessionStorage.getItem("cart") || "[]");
+    const existing = basket.find((item: any) => item.id === product.id);
+    if (existing) {
+      existing.count = (existing.count || 1) + 1;
+    } else {
+      basket.push({ ...product, count: 1 });
+    }
+    sessionStorage.setItem("cart", JSON.stringify(basket));
+    toast({ title: "Added to basket!" });
   };
 
   // Determine if the current user is the owner of this shop
@@ -532,7 +534,7 @@ const ShopDetail = () => {
       <Button
         size="lg"
         className="bg-gradient-to-r from-primary to-blue-500 text-white shadow-lg hover:scale-105 hover:shadow-xl transition-all font-serif text-base px-8 py-3 rounded-full"
-        onClick={() => handleAddToBasket(selectedProduct)}
+        onClick={() => addToBasket(selectedProduct)}
       >
         🛒 Add to Basket
       </Button>

@@ -21,6 +21,7 @@ interface Clinic {
   closeTime: string;
   organizationType: string;
   isActive: boolean;
+  ownerId: string; // Added ownerId property
 }
 
 interface Service {
@@ -33,7 +34,7 @@ interface Service {
 const ClinicDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +54,9 @@ const ClinicDetail = () => {
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [newServiceName, setNewServiceName] = useState("");
   const [isAddingService, setIsAddingService] = useState(false);
+  const [editServiceId, setEditServiceId] = useState<string | null>(null);
+
+  const isOwner = clinic && user && clinic.ownerId === user.id;
 
   // Klinik məlumatı gətir
   useEffect(() => {
@@ -169,16 +173,17 @@ const ClinicDetail = () => {
     try {
       const res = await fetch(`/api/Organization/edit?id=${clinic.id}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }, // Content-Type göndərmə!
         body: formData,
       });
       if (res.ok) {
         toast({ title: "Clinic updated!" });
         setShowEditModal(false);
-        const updated = await res.json();
-        setClinic((prev) => ({ ...prev!, ...updated }));
+        // Səhifəni tam refresh et
+        window.location.reload();
       } else {
-        toast({ title: "Update failed", variant: "destructive" });
+        const error = await res.text();
+        toast({ title: "Update failed", description: error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
@@ -190,29 +195,72 @@ const ClinicDetail = () => {
     e.preventDefault();
     if (!clinic?.id || !newServiceName.trim()) return;
     setIsAddingService(true);
+
     try {
-      const res = await fetch(`/api/Service?organizationId=${clinic.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: newServiceName }),
-      });
+      let res;
+      if (editServiceId) {
+        // Edit existing service
+        res = await fetch(`/api/Service/${editServiceId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: newServiceName }),
+        });
+      } else {
+        // Add new service
+        res = await fetch(`/api/Service?organizationId=${clinic.id}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: newServiceName }),
+        });
+      }
+
       if (res.ok) {
-        toast({ title: "Service added!" });
+        toast({ title: editServiceId ? "Service updated!" : "Service added!" });
         setShowAddServiceModal(false);
         setNewServiceName("");
+        setEditServiceId(null);
         // Servisləri yenilə
-        const created = await res.json();
-        setServices(prev => [...prev, created]);
+        const updated = await res.json();
+        if (editServiceId) {
+          setServices(prev =>
+            prev.map(s => (s.id === editServiceId ? updated : s))
+          );
+        } else {
+          setServices(prev => [...prev, updated]);
+        }
       } else {
-        toast({ title: "Failed to add service", variant: "destructive" });
+        toast({ title: "Failed to save service", variant: "destructive" });
       }
     } catch {
-      toast({ title: "Failed to add service", variant: "destructive" });
+      toast({ title: "Failed to save service", variant: "destructive" });
     } finally {
       setIsAddingService(false);
+    }
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!window.confirm("Are you sure you want to delete this service?")) return;
+    try {
+      const res = await fetch(`/api/Service/${serviceId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        toast({ title: "Service deleted!" });
+        setServices(prev => prev.filter(s => s.id !== serviceId));
+      } else {
+        toast({ title: "Failed to delete service", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to delete service", variant: "destructive" });
     }
   };
 
@@ -249,6 +297,20 @@ const ClinicDetail = () => {
       </div>
     );
   }
+
+  // When opening modal for edit:
+  const openEditServiceModal = (service: Service) => {
+    setEditServiceId(service.id);
+    setNewServiceName(service.name);
+    setShowAddServiceModal(true);
+  };
+
+  // When opening modal for add:
+  const openAddServiceModal = () => {
+    setEditServiceId(null);
+    setNewServiceName("");
+    setShowAddServiceModal(true);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -363,6 +425,33 @@ const ClinicDetail = () => {
             </CardContent>
           </Card>
         </div>
+  {/* Quick Actions */}
+        {isOwner && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Manage your clinic</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button variant="outline" onClick={() => navigate("/appointments")}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  View Appointments
+                </Button>
+                <Button variant="outline" onClick={() => openAddServiceModal()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Service
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/patient-records")}>
+                  Patient Records
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/clinic-analytics")}>
+                  View Analytics
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Services Panel */}
         <Card className="mt-6">
@@ -386,10 +475,31 @@ const ClinicDetail = () => {
                       <p className="font-semibold text-base">{service.name}</p>
                       <p className="text-sm text-muted-foreground">{service.description}</p>
                     </div>
-                    <div className="mt-2 md:mt-0">
-                      <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                        {service.price ? `${service.price} ₼` : "Free"}
+                    <div className="mt-2 md:mt-0 flex gap-2 items-center">
+                      <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+                        <Wrench className="h-4 w-4 mr-1" />
+                        Service
                       </span>
+                      {isOwner && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditServiceModal(service)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteService(service.id)}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -398,32 +508,7 @@ const ClinicDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Manage your clinic</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button variant="outline" onClick={() => navigate("/appointments")}>
-                <Calendar className="h-4 w-4 mr-2" />
-                View Appointments
-              </Button>
-              <Button variant="outline" onClick={() => setShowAddServiceModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Service
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/patient-records")}>
-                Patient Records
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/clinic-analytics")}>
-                View Analytics
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
+      
         {/* Recent Activity */}
         <Card className="mt-6">
           <CardHeader>
@@ -543,10 +628,15 @@ const ClinicDetail = () => {
               onSubmit={handleAddService}
             >
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-xl font-bold">Add Service</h2>
+                <h2 className="text-xl font-bold">
+                  {editServiceId ? "Edit Service" : "Add Service"}
+                </h2>
                 <button
                   type="button"
-                  onClick={() => setShowAddServiceModal(false)}
+                  onClick={() => {
+                    setShowAddServiceModal(false);
+                    setEditServiceId(null);
+                  }}
                   className="text-muted-foreground hover:text-primary"
                 >
                   <X className="h-5 w-5" />
@@ -560,13 +650,16 @@ const ClinicDetail = () => {
               />
               <div className="flex gap-2">
                 <Button type="submit" className="flex-1" disabled={isAddingService}>
-                  {isAddingService ? "Adding..." : "Add"}
+                  {isAddingService ? (editServiceId ? "Saving..." : "Adding...") : (editServiceId ? "Save" : "Add")}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setShowAddServiceModal(false)}
+                  onClick={() => {
+                    setShowAddServiceModal(false);
+                    setEditServiceId(null);
+                  }}
                 >
                   Cancel
                 </Button>
