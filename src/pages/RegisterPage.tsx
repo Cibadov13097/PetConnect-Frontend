@@ -84,9 +84,28 @@ const RegisterPage = () => {
         ConfirmPassword: formData.confirmPassword,
         Role: formData.role,
       };
-      await apiClient.register(payload);
-      toast({ title: "Success", description: "Account created! Check your email." });
-      navigate("/login");
+      const res = await fetch("/api/Account/Register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Success", description: "Account created! Check your email." });
+        navigate("/login");
+      } else {
+        let errorMsg = "Registration failed.";
+        if (data.errors && Array.isArray(data.errors)) {
+          errorMsg = data.errors.map((err: any) => err.description).join(" ");
+        } else if (data.message) {
+          errorMsg = data.message;
+        }
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
