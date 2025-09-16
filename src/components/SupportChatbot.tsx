@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const SupportChatbot = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ text: string; sender: "user" | "bot" }[]>([]);
@@ -13,7 +15,7 @@ const SupportChatbot = () => {
   const getBotReply = async (question: string) => {
     try {
       setLoading(true);
-      const res = await fetch("/api/AiChat", {
+      const res = await fetch(`${API_BASE}/api/AiChat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: question, userId }),

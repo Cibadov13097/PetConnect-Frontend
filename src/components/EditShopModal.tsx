@@ -60,6 +60,8 @@ const EditShopModal: React.FC<EditShopModalProps> = ({ shop, isOpen, onClose, on
     }
   };
 
+  const API_BASE = import.meta.env.VITE_API_URL;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -79,7 +81,7 @@ const EditShopModal: React.FC<EditShopModalProps> = ({ shop, isOpen, onClose, on
         formDataToSend.append('ImgFile', imageFile);
       }
 
-      const response = await fetch(`https://localhost:7213/api/Organization/edit?id=${shop.id}`, {
+      const response = await fetch(`${API_BASE}/api/Organization/edit?id=${shop.id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

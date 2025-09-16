@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, MapPin, Calendar, Building2, Edit, Home, DollarSign, Plus } from "lucide-react";
-
-const API_BASE = "https://localhost:7213";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const Profile = () => {
   const { token, isAuthenticated } = useAuth();

@@ -10,6 +10,8 @@ import EditShopModal from "@/components/EditShopModal";
 import { apiClient } from "@/lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 interface Shop {
   id: string;
   name: string;
@@ -62,7 +64,7 @@ const ShopDetail = () => {
         let data;
         if (shopId) {
           // Fetch shop by ID
-          const response = await fetch(`https://localhost:7213/api/Organization/getBy${shopId}`, {
+          const response = await fetch(`${API_BASE}/api/Organization/getBy${shopId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (response.ok) {
@@ -70,7 +72,7 @@ const ShopDetail = () => {
           }
         } else {
           // Fallback: fetch current user's shop
-          const response = await fetch("https://localhost:7213/api/Organization/me", {
+          const response = await fetch(`${API_BASE}/api/Organization/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (response.ok) {
@@ -117,7 +119,7 @@ const ShopDetail = () => {
   // Fetch products for this shop (with pagination)
   useEffect(() => {
     if (shopId) {
-      fetch(`https://localhost:7213/api/Product/getAll?pageNumber=1&pageSize=1000`)
+      fetch(`${API_BASE}/api/Product/getAll?pageNumber=1&pageSize=1000`)
         .then(res => res.json())
         .then(data => {
           // Filter only this shop's products
@@ -139,7 +141,7 @@ const ShopDetail = () => {
 
   // Fetch animal types and map animalId to name (Dog, Cat, etc.)
   useEffect(() => {
-    fetch("https://localhost:7213/api/Animal/getAll")
+    fetch(`${API_BASE}/api/Animal/getAll`)
       .then(res => res.json())
       .then((data: any[]) => {
         // data: [{ id: 1, name: "Dog" }, ...]

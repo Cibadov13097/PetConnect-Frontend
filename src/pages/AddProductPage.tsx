@@ -31,6 +31,8 @@ interface Animal {
   name: string;
 }
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const AddProductPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -65,7 +67,7 @@ const AddProductPage = () => {
     const fetchCategoriesAndAnimals = async () => {
       try {
         // Fetch categories from API
-        const categoriesResponse = await fetch("https://localhost:7213/api/ProductCategory/getAll", {
+        const categoriesResponse = await fetch(`${API_BASE}/api/ProductCategory/getAll`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -87,7 +89,7 @@ const AddProductPage = () => {
         }
 
         // Fetch animals from API
-        const animalsResponse = await fetch("https://localhost:7213/api/Animal/getAll", {
+        const animalsResponse = await fetch(`${API_BASE}/api/Animal/getAll`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -184,7 +186,7 @@ const AddProductPage = () => {
         formDataToSend.append('ImageFile', formData.ImageFile);
       }
 
-      const response = await fetch("https://localhost:7213/api/Product/add", {
+      const response = await fetch(`${API_BASE}/api/Product/add`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

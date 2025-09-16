@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, Heart } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,25 +23,18 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // API çağırışları üçün yalnız API_BASE istifadə olunur
       const response = await apiClient.login({ email, password });
 
       console.log('Login response:', response);
 
-      // Try different possible token property names:
       const token = response.token ?? response.accessToken ?? null;
 
       if (response.success && token) {
-        // Set token in ApiClient instance
         apiClient.setToken(token);
-
-        // Persist token in localStorage for page reloads
         localStorage.setItem("authToken", token);
-
-        // Update auth context/state (adjust depending on your user data shape)
         setAuth(response.user, token);
-
         toast({ title: "Success", description: "Logged in successfully!" });
-
         navigate("/");
       } else {
         console.warn('Login did not return a valid token or success flag.');

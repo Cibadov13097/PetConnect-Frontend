@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const Cart = () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const { token, user, isAuthenticated } = useAuth(); // isAuthenticated əlavə et
@@ -54,7 +56,7 @@ const Cart = () => {
     // Ən son balansı backend-dən al
     let latestBudget = user?.budget ?? 0;
     try {
-      const res = await fetch("/api/Balance/me", {
+      const res = await fetch(`${API_BASE}/api/Balance/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -80,7 +82,7 @@ const Cart = () => {
       })),
     };
     try {
-      const res = await fetch("/api/Order/Add", {
+      const res = await fetch(`${API_BASE}/api/Order/Add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

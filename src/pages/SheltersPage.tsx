@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const SheltersPage = () => {
   const [shelters, setShelters] = useState<Organization[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,7 +27,7 @@ const SheltersPage = () => {
     location: "",
     telephone: "",
     email: "",
-    website: "", // <-- Add this line
+    website: "", 
     openTime: "",
     closeTime: "",
     imgFile: null as File | null,
@@ -201,13 +203,12 @@ const SheltersPage = () => {
                     formData.append("Telephone", registerForm.telephone);
                     formData.append("Email", registerForm.email);
                     formData.append("Website", registerForm.website);
-                    // TimeSpan expects "HH:mm:ss"
                     formData.append("OpenTime", registerForm.openTime ? `${registerForm.openTime}:00` : "");
                     formData.append("CloseTime", registerForm.closeTime ? `${registerForm.closeTime}:00` : "");
                     formData.append("OrganizationType", "Shelter");
                     if (registerForm.imgFile) formData.append("ImgFile", registerForm.imgFile);
 
-                    const response = await fetch("https://localhost:7213/api/Organization/Add", {
+                    const response = await fetch(`${API_BASE}/api/Organization/Add`, {
                       method: "POST",
                       body: formData,
                       headers: {
@@ -228,7 +229,7 @@ const SheltersPage = () => {
                       location: "",
                       telephone: "",
                       email: "",
-                      website: "", // <-- Add this line
+                      website: "",
                       openTime: "",
                       closeTime: "",
                       imgFile: null,

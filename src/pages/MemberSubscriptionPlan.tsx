@@ -32,7 +32,7 @@ const COLORS: Record<string, string> = {
   PawElite: "border-yellow-400",
 };
 
-const API_BASE = "https://localhost:7213";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const getToken = () => {
   try {

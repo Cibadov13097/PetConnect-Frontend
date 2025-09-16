@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const MyPets = () => {
   const { user, isAuthenticated, token } = useAuth();
   const [pets, setPets] = useState<any[]>([]);
@@ -41,7 +43,7 @@ const MyPets = () => {
     const fetchPets = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/Pet/me", {
+        const res = await fetch(`${API_BASE}/api/Pet/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -54,11 +56,11 @@ const MyPets = () => {
       setLoading(false);
     };
     if (isAuthenticated) fetchPets();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   // Fetch all animals on mount
   useEffect(() => {
-    fetch("/api/Animal/getAll")
+    fetch(`${API_BASE}/api/Animal/getAll`)
       .then((res) => res.json())
       .then((data) => setAnimals(data || []));
   }, []);
@@ -66,7 +68,7 @@ const MyPets = () => {
   // Fetch breeds when animalId changes
   useEffect(() => {
     if (animalId) {
-      fetch(`/api/Breed/getAllByAnimalType?animalId=${animalId}`)
+      fetch(`${API_BASE}/api/Breed/getAllByAnimalType?animalId=${animalId}`)
         .then((res) => res.json())
         .then((data) => setBreeds(data || []));
     } else {
@@ -76,7 +78,7 @@ const MyPets = () => {
 
   useEffect(() => {
     // Plan məlumatını fetch et
-    fetch("/api/MemberSubscription/me", {
+    fetch(`${API_BASE}/api/MemberSubscription/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -98,7 +100,7 @@ const MyPets = () => {
       formData.append("Aktiv", addForm.isActive.toString());
       if (addForm.image) formData.append("ImageFile", addForm.image);
 
-      const res = await fetch("/api/Pet/add", {
+      const res = await fetch(`${API_BASE}/api/Pet/add`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -140,7 +142,7 @@ const MyPets = () => {
     let breedAnimalId = "";
     // If breeds are not loaded yet, fetch all breeds first
     if (!breeds.length) {
-      const allBreedsRes = await fetch("/api/Breed/getAll");
+      const allBreedsRes = await fetch(`${API_BASE}/api/Breed/getAll`);
       const allBreeds = await allBreedsRes.json();
       setBreeds(allBreeds || []);
       const breed = allBreeds.find((b: any) => b.id === pet.breedId);
@@ -152,7 +154,7 @@ const MyPets = () => {
 
     // Fetch breeds for this animal type
     if (breedAnimalId) {
-      const res = await fetch(`/api/Breed/getAllByAnimalType?animalId=${breedAnimalId}`);
+      const res = await fetch(`${API_BASE}/api/Breed/getAllByAnimalType?animalId=${breedAnimalId}`);
       const data = await res.json();
       setBreeds(data || []);
     }
@@ -185,7 +187,7 @@ const MyPets = () => {
       formData.append("isActive", editForm.isActive.toString()); // <-- Düzgün ad!
       if (editForm.image) formData.append("ImageFile", editForm.image);
 
-      const res = await fetch(`/api/Pet/edit/${editModal.pet.id}`, {
+      const res = await fetch(`${API_BASE}/api/Pet/edit/${editModal.pet.id}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -228,7 +230,7 @@ const MyPets = () => {
   const handleDeletePet = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this pet?")) return;
     try {
-      const res = await fetch(`/api/Pet/delete/${id}`, {
+      const res = await fetch(`${API_BASE}/api/Pet/delete/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

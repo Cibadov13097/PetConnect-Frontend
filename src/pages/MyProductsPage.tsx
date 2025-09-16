@@ -80,6 +80,8 @@ const MyProductsPage = () => {
   const [animals, setAnimals] = useState<{ id: number; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
 
+  const API_BASE = import.meta.env.VITE_API_URL;
+
   // Fetch products function using the new /me endpoint
   const fetchProducts = useCallback(async (page = 1) => {
     try {
@@ -88,7 +90,7 @@ const MyProductsPage = () => {
       console.log(`Fetching page ${page} with pageSize ${pageSize}`);
       
       const response = await fetch(
-        `https://localhost:7213/api/Product/me?pageNumber=${page}&pageSize=${pageSize}`,
+        `${API_BASE}/api/Product/me?pageNumber=${page}&pageSize=${pageSize}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -208,7 +210,7 @@ const MyProductsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [token, toast, navigate, pageSize]);
+  }, [token, toast, navigate, pageSize, API_BASE]);
 
   // Initial load
   useEffect(() => {
@@ -276,7 +278,7 @@ const MyProductsPage = () => {
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `https://localhost:7213/api/Product/delete/${productToDelete.id}`,
+        `${API_BASE}/api/Product/delete/${productToDelete.id}`,
         {
           method: "DELETE",
           headers: {
@@ -340,11 +342,11 @@ const MyProductsPage = () => {
       formData.append("Weight", editForm.weight);
       formData.append("Count", editForm.count);
       if (editForm.image) formData.append("file", editForm.image);
-      formData.append("AnimalId", editForm.animalId); // <-- Added this line
+      formData.append("AnimalId", editForm.animalId);
       formData.append("ProductCategoryId", editForm.productCategoryId);
 
       const response = await fetch(
-        `https://localhost:7213/api/Product/edit/${productToEdit.id}`,
+        `${API_BASE}/api/Product/edit/${productToEdit.id}`,
         {
           method: "PUT",
           headers: {
@@ -389,7 +391,7 @@ const MyProductsPage = () => {
       const formData = new FormData();
       formData.append("file", excelFile);
 
-      const res = await fetch("https://localhost:7213/api/Product/upload-products", {
+      const res = await fetch(`${API_BASE}/api/Product/upload-products`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -415,19 +417,19 @@ const MyProductsPage = () => {
 
   // Fetch animals for the select input
   useEffect(() => {
-    fetch("https://localhost:7213/api/Animal/getAll")
+    fetch(`${API_BASE}/api/Animal/getAll`)
       .then(res => res.json())
       .then(data => setAnimals(data || []))
       .catch(() => setAnimals([]));
-  }, []);
+  }, [API_BASE]);
 
   // Kategoriya siyahısını yüklə
   useEffect(() => {
-    fetch("https://localhost:7213/api/ProductCategory/getAll")
+    fetch(`${API_BASE}/api/ProductCategory/getAll`)
       .then(res => res.json())
       .then(data => setCategories(data || []))
       .catch(() => setCategories([]));
-  }, []);
+  }, [API_BASE]);
 
   if (isLoading) {
     return (

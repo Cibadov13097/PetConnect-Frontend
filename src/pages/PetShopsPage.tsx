@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth"; // <-- import auth
 import { useNavigate, useLocation } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const PetShopsPage = () => {
   const [petShops, setPetShops] = useState<Organization[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,7 +85,7 @@ const PetShopsPage = () => {
       formData.append("OrganizationType", "Shop");
       if (addForm.imgFile) formData.append("ImgFile", addForm.imgFile);
 
-      const response = await fetch("/api/Organization/Add", {
+      const response = await fetch(`${API_BASE}/api/Organization/Add`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -340,7 +342,7 @@ const ShopDetail = () => {
 
   useEffect(() => {
     if (shopId) {
-      fetch(`/api/Product/getById?shopId=${shopId}`)
+      fetch(`${API_BASE}/api/Product/getById?shopId=${shopId}`)
         .then(res => res.json())
         .then(data => setProducts(data.items || []));
     }

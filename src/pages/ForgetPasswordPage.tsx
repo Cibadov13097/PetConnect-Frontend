@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Mail } from "lucide-react";
-import { apiClient } from "@/lib/api";
+
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const ForgetPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -19,12 +20,24 @@ const ForgetPasswordPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await apiClient.forgetPassword(email);
-      toast({
-        title: "Success",
-        description: res?.Message || "Password reset link sent to your email.",
+      const res = await fetch(`${API_BASE}/api/Account/ForgetPassword?email=${encodeURIComponent(email)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
-      setSent(true);
+      const data = await res.json();
+      if (res.ok) {
+        toast({
+          title: "Success",
+          description: data?.Message || "Password reset link sent to your email.",
+        });
+        setSent(true);
+      } else {
+        toast({
+          title: "Error",
+          description: data?.Message || "Failed to send reset link.",
+          variant: "destructive",
+        });
+      }
     } catch (err: any) {
       toast({
         title: "Error",

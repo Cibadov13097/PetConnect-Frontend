@@ -7,6 +7,8 @@ import { Search, ShoppingCart, Star, ChevronLeft, ChevronRight, X } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const ProductsPage = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,7 +36,7 @@ const ProductsPage = () => {
 
   // Fetch categories and build map on mount
   useEffect(() => {
-    fetch("https://localhost:7213/api/ProductCategory/getAll")
+    fetch(`${API_BASE}/api/ProductCategory/getAll`)
       .then((res) => res.json())
       .then((data) => {
         setCategories(data || []);
@@ -55,7 +57,7 @@ const ProductsPage = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        let url = `https://localhost:7213/api/Product/getAll?pageNumber=${currentPage}&pageSize=${pageSize}`;
+        let url = `${API_BASE}/api/Product/getAll?pageNumber=${currentPage}&pageSize=${pageSize}`;
         if (searchTerm) {
           url += `&search=${encodeURIComponent(searchTerm)}`;
         }
@@ -171,7 +173,7 @@ const ProductsPage = () => {
               setLoading(true);
               // Default məhsulları fetch et
               const res = await fetch(
-                `https://localhost:7213/api/Product/getAll?pageNumber=1&pageSize=${pageSize}`
+                `${API_BASE}/api/Product/getAll?pageNumber=1&pageSize=${pageSize}`
               );
               const data = await res.json();
               setProducts(data.items || []);
@@ -196,7 +198,7 @@ const ProductsPage = () => {
                 setSelectedCategory(cat.id);
                 setLoading(true);
                 const res = await fetch(
-                  `https://localhost:7213/api/Product/filterByCategory/${cat.id}`
+                  `${API_BASE}/api/Product/filterByCategory/${cat.id}`
                 );
                 const data = await res.json();
                 setProducts(Array.isArray(data) ? data : []);
@@ -206,7 +208,6 @@ const ProductsPage = () => {
                 setLoading(false);
               }}
             >
-              {/* İstəyə görə ikon əlavə edə bilərsən */}
               <Star className="h-4 w-4 text-yellow-400" />
               {cat.name}
             </Button>
@@ -340,7 +341,7 @@ const ProductsPage = () => {
                 setSelectedCategory(null);
                 setLoading(true);
                 const res = await fetch(
-                  `https://localhost:7213/api/Product/getAll?pageNumber=1&pageSize=${pageSize}`
+                  `${API_BASE}/api/Product/getAll?pageNumber=1&pageSize=${pageSize}`
                 );
                 const data = await res.json();
                 setProducts(data.items || []);

@@ -6,7 +6,7 @@ import { AlertCircle, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const API_BASE = "https://localhost:7213";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 type Pet = {
   id: number;

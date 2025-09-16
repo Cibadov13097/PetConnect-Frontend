@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import notificationSound from "@/assets/audio/notification.mp3";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,12 +56,11 @@ const Navigation = () => {
   useEffect(() => {
     const fetchMyOrg = async () => {
       try {
-        const token = sessionStorage.getItem("token");
         if (!token) {
           setOrganization(null);
           return;
         }
-        const res = await fetch("/api/Organization/me", {
+        const res = await fetch(`${API_BASE}/api/Organization/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -72,15 +73,14 @@ const Navigation = () => {
       }
     };
     if (isAuthenticated) fetchMyOrg();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   // User details
   useEffect(() => {
     const fetchUser = async () => {
-      const token = sessionStorage.getItem("token");
       if (!token) return;
       try {
-        const res = await fetch("/api/User/me", {
+        const res = await fetch(`${API_BASE}/api/User/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -89,7 +89,7 @@ const Navigation = () => {
       } catch {}
     };
     if (isAuthenticated) fetchUser();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   // Cart count
   useEffect(() => {
@@ -102,7 +102,7 @@ const Navigation = () => {
     const fetchBalance = async () => {
       if (!token) return;
       try {
-        const res = await fetch("/api/Balance/me", {
+        const res = await fetch(`${API_BASE}/api/Balance/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -120,12 +120,11 @@ const Navigation = () => {
   // Notifications initial fetch
   useEffect(() => {
     if (!token) return;
-    fetch("/api/Notification/me", {
+    fetch(`${API_BASE}/api/Notification/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.ok ? res.json() : [])
       .then((data) => {
-        // Tarixə görə azalan sırala (ən son gələn başda)
         const sorted = [...data].sort(
           (a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
         );
@@ -169,7 +168,7 @@ const Navigation = () => {
   }, [token]);
 
   const markAsRead = async (id: number) => {
-    await fetch(`/api/Notification/${id}/read`, {
+    await fetch(`${API_BASE}/api/Notification/${id}/read`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -371,12 +370,11 @@ const Navigation = () => {
             variant="default"
             className="mt-2 w-full"
             onClick={async () => {
-              await fetch("https://localhost:7213/api/Notification/readAll", {
+              await fetch(`${API_BASE}/api/Notification/readAll`, {
                 method: "PUT",
                 headers: { Authorization: `Bearer ${token}` },
               });
-              // Backenddən yenidən fetch et!
-              const res = await fetch("https://localhost:7213/api/Notification/me", {
+              const res = await fetch(`${API_BASE}/api/Notification/me`, {
                 headers: { Authorization: `Bearer ${token}` },
               });
               if (res.ok) {

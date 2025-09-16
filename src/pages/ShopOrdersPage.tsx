@@ -6,6 +6,8 @@ import { BadgeCheck, XCircle, Truck, Package, RefreshCw, ArrowRight, Undo2 } fro
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const statusColors: Record<string, string> = {
   Pending: "bg-gray-200 text-gray-700",
   Confirmed: "bg-blue-200 text-blue-800",
@@ -35,7 +37,7 @@ const ShopOrdersPage = () => {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetch("/api/Order/meShop", {
+    fetch(`${API_BASE}/api/Order/meShop`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -56,7 +58,7 @@ const ShopOrdersPage = () => {
 
   const handleChangeStatus = async (orderId: number, action: string) => {
     try {
-      const res = await fetch(`/api/Order/${action}/${orderId}`, {
+      const res = await fetch(`${API_BASE}/api/Order/${action}/${orderId}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -111,7 +113,7 @@ const ShopOrdersPage = () => {
   const confirmDeleteOrder = async () => {
     if (!deleteOrderId) return;
     try {
-      const res = await fetch(`/api/Order/delete/${deleteOrderId}`, {
+      const res = await fetch(`${API_BASE}/api/Order/delete/${deleteOrderId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

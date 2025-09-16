@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+    base: mode === "production" ? "/critter-connections/" : "/", 
   server: {
     host: "::",
     port: 8080,
@@ -12,7 +13,7 @@ export default defineConfig(({ mode }) => ({
       "/api": {
         target: "https://localhost:7213",
         changeOrigin: true,
-        secure: false, // self-signed sertifikat üçün
+        secure: false, 
       },
     },
   },

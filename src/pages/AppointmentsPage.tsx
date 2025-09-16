@@ -36,6 +36,8 @@ function getDaysArray(start: Date, end: Date) {
   return arr;
 }
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const AppointmentsPage = () => {
   const { token, isAuthenticated } = useAuth();
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -61,7 +63,7 @@ const AppointmentsPage = () => {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetch("/api/Clinic/meAppointments", {
+    fetch(`${API_BASE}/api/Clinic/meAppointments`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
@@ -72,15 +74,13 @@ const AppointmentsPage = () => {
   // Servisləri backend-dən gətir
   useEffect(() => {
     if (!isAuthenticated) return;
-    // OrganizationId-ni backend-dən al
-    fetch("/api/Organization/me", {
+    fetch(`${API_BASE}/api/Organization/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
       .then(org => {
         if (org && org.id) {
-          // Servisləri organizationId ilə gətir
-          fetch(`/api/Service/organization/${org.id}`, {
+          fetch(`${API_BASE}/api/Service/organization/${org.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           })
             .then(res => res.ok ? res.json() : [])
@@ -116,14 +116,14 @@ const AppointmentsPage = () => {
   // Confirm appointment
   const handleConfirm = async (id: number) => {
     setActionLoading(true);
-    const res = await fetch(`/api/Clinic/confirmAppointment?appointmentId=${id}`, {
+    const res = await fetch(`${API_BASE}/api/Clinic/confirmAppointment?appointmentId=${id}`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
       setSelected(null);
       // Refresh appointments
-      const data = await fetch("/api/Clinic/meAppointments", {
+      const data = await fetch(`${API_BASE}/api/Clinic/meAppointments`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(r => r.json());
       setAppointments(data);
@@ -134,14 +134,14 @@ const AppointmentsPage = () => {
   // Cancel appointment
   const handleCancel = async (id: number) => {
     setActionLoading(true);
-    const res = await fetch(`/api/Clinic/cancelAppointment?appointmentId=${id}`, {
+    const res = await fetch(`${API_BASE}/api/Clinic/cancelAppointment?appointmentId=${id}`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
       setSelected(null);
       // Refresh appointments
-      const data = await fetch("/api/Clinic/meAppointments", {
+      const data = await fetch(`${API_BASE}/api/Clinic/meAppointments`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(r => r.json());
       setAppointments(data);
@@ -157,7 +157,7 @@ const AppointmentsPage = () => {
       return;
     }
     setActionLoading(true);
-    const res = await fetch(`/api/Clinic/completeAppointment?appointmentId=${id}`, {
+    const res = await fetch(`${API_BASE}/api/Clinic/completeAppointment?appointmentId=${id}`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -165,7 +165,7 @@ const AppointmentsPage = () => {
       setSelected(null);
       setInfoMsg(null);
       // Refresh appointments
-      const data = await fetch("/api/Clinic/meAppointments", {
+      const data = await fetch(`${API_BASE}/api/Clinic/meAppointments`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(r => r.json());
       setAppointments(data);

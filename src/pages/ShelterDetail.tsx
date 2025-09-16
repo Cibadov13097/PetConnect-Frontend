@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Building2, MapPin, Phone, Mail, Globe, Edit, Plus, Heart, Users, Clock, Wrench, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 interface Shelter {
   id: string;
   name: string;
@@ -74,7 +76,7 @@ const ShelterDetail = () => {
           return;
         }
 
-        const response = await fetch(`/api/Organization/getBy${id}`);
+        const response = await fetch(`${API_BASE}/api/Organization/getBy${id}`);
         if (response.ok) {
           const data = await response.json();
           setShelter(data);
@@ -112,8 +114,7 @@ const ShelterDetail = () => {
     const fetchServices = async () => {
       if (!id) return;
       try {
-        // Əvvəlki: `/api/Service/getAllByOrganizationId?organizationId=${id}`
-        const res = await fetch(`/api/Service/organization/${id}`);
+        const res = await fetch(`${API_BASE}/api/Service/organization/${id}`);
         if (res.ok) {
           const data = await res.json();
           setServices(data);
@@ -366,7 +367,7 @@ const ShelterDetail = () => {
                   e.preventDefault();
                   setIsSubmitting(true);
                   try {
-                    const res = await fetch("/api/Service", {
+                    const res = await fetch(`${API_BASE}/api/Service`, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
@@ -454,7 +455,7 @@ const ShelterDetail = () => {
                           size="sm"
                           onClick={async () => {
                             if (window.confirm("Are you sure you want to delete this service?")) {
-                              const res = await fetch(`/api/Service/${service.id}`, {
+                              const res = await fetch(`${API_BASE}/api/Service/${service.id}`, {
                                 method: "DELETE",
                                 headers: { Authorization: `Bearer ${token}` }
                               });
@@ -521,7 +522,7 @@ const ShelterDetail = () => {
                   e.preventDefault();
                   setIsSubmitting(true);
                   try {
-                    const res = await fetch(`/api/Service/${editServiceId}`, {
+                    const res = await fetch(`${API_BASE}/api/Service/${editServiceId}`, {
                       method: "PUT",
                       headers: {
                         "Content-Type": "application/json",
@@ -591,9 +592,9 @@ const ShelterDetail = () => {
                   formData.append("CloseTime", editShelterForm.closeTime);
                   if (editShelterForm.image) formData.append("ImgFile", editShelterForm.image);
 
-                  const res = await fetch(`/api/Organization/edit?id=${shelter.id}`, {
+                  const res = await fetch(`${API_BASE}/api/Organization/edit?id=${shelter.id}`, {
                     method: "PUT",
-                    headers: { Authorization: `Bearer ${token}` }, // Content-Type göndərmə!
+                    headers: { Authorization: `Bearer ${token}` },
                     body: formData,
                   });
                   if (res.ok) {

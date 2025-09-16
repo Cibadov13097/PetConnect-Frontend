@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const ClinicsPage = () => {
   const [clinics, setClinics] = useState<Organization[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,7 +74,7 @@ const ClinicsPage = () => {
     const fetchOrganization = async () => {
       if (isAuthenticated && user?.role?.toLowerCase() === "clinicowner") {
         try {
-          const res = await fetch("/api/Organization/me", {
+          const res = await fetch(`${API_BASE}/api/Organization/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
@@ -106,7 +108,7 @@ const ClinicsPage = () => {
       if (registerForm.imgFile) formData.append("ImgFile", registerForm.imgFile);
       formData.append("OrganizationType", "Clinic");
 
-      const response = await fetch("/api/Organization/Add", {
+      const response = await fetch(`${API_BASE}/api/Organization/Add`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -160,7 +162,7 @@ const ClinicsPage = () => {
     // Əvvəlcə ClinicId-ni backend-dən al
     let clinicId = null;
     try {
-      const res = await fetch(`/api/Clinic/byOrganization/${clinic.id}`, {
+      const res = await fetch(`${API_BASE}/api/Clinic/byOrganization/${clinic.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -180,7 +182,7 @@ const ClinicsPage = () => {
     });
     // Servisləri backend-dən gətir
     try {
-      const res = await fetch(`/api/Service/organization/${clinic.id}`, {
+      const res = await fetch(`${API_BASE}/api/Service/organization/${clinic.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -202,13 +204,13 @@ const ClinicsPage = () => {
     try {
       const body = {
         clinicId: selectedClinic.id,
-        Serviceid: parseInt(appointmentForm.serviceid, 10), // <-- Dəyişiklik
+        Serviceid: parseInt(appointmentForm.serviceid, 10),
         name: appointmentForm.name,
         description: appointmentForm.description,
         appointmentTime: appointmentForm.appointmentTime,
         appointmentStatus: "Pending",
       };
-      const res = await fetch("/api/Clinic/addAppointment", {
+      const res = await fetch(`${API_BASE}/api/Clinic/addAppointment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

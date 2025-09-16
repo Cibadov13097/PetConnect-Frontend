@@ -23,11 +23,13 @@ const HomePage = () => {
 	>([]);
 	const [currentSlide, setCurrentSlide] = useState(0);
 
+	const API_BASE = import.meta.env.VITE_API_URL;
+
 	// Fetch slider
 	useEffect(() => {
 		const fetchSlider = async () => {
 			try {
-				const res = await fetch("https://localhost:7213/api/HomeSlider/GetBy/2");
+				const res = await fetch(`${API_BASE}/api/HomeSlider/GetBy/2`);
 				const data = await res.json();
 				setSlides([
 					{
@@ -82,7 +84,7 @@ const HomePage = () => {
 	const [randomShelters, setRandomShelters] = useState<any[]>([]);
 
 	useEffect(() => {
-		fetch("https://localhost:7213/api/Organization/getAll")
+		fetch(`${API_BASE}/api/Organization/getAll`)
 			.then((res) => res.json())
 			.then((data) => {
 				setOrganizations(data.items || data || []);

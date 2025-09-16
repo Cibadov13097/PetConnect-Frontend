@@ -5,7 +5,7 @@ import { BadgeCheck, XCircle, Truck, Package, RefreshCw, ArrowRight, Undo2 } fro
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 
-const API_BASE = "https://localhost:7213";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const statusColors: Record<string, string> = {
   Pending: "bg-gray-200 text-gray-700",
